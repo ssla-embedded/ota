@@ -117,12 +117,12 @@ static const char *LAST_LOG_FILE = "/cache/recovery/last_log";
 // We will try to apply the update package 5 times at most in case of an I/O error or
 // bspatch | imgpatch error.
 static const int RETRY_LIMIT = 4;
-static const int BATTERY_READ_TIMEOUT_IN_SEC = 10;
+//static const int BATTERY_READ_TIMEOUT_IN_SEC = 10;
 // GmsCore enters recovery mode to install package when having enough battery
 // percentage. Normally, the threshold is 40% without charger and 20% with charger.
 // So we should check battery with a slightly lower limitation.
-static const int BATTERY_OK_PERCENTAGE = 20;
-static const int BATTERY_WITH_CHARGER_OK_PERCENTAGE = 15;
+//static const int BATTERY_OK_PERCENTAGE = 20;
+//static const int BATTERY_WITH_CHARGER_OK_PERCENTAGE = 15;
 static constexpr const char* RECOVERY_WIPE = "/etc/recovery.wipe";
 static constexpr const char* DEFAULT_LOCALE = "en-US";
 
@@ -1115,6 +1115,7 @@ static int apply_from_sdcard(Device* device, bool* wipe_cache) {
 
 // Returns REBOOT, SHUTDOWN, or REBOOT_BOOTLOADER. Returning NO_ACTION means to take the default,
 // which is to reboot or shutdown depending on if the --shutdown_after flag was passed to recovery.
+
 static Device::BuiltinAction prompt_and_wait(Device* device, int status) {
   for (;;) {
     finish_recovery();
@@ -1268,6 +1269,24 @@ void UiLogger(android::base::LogId /* id */, android::base::LogSeverity severity
   }
 }
 
+// Set the retry count to |retry_count| in BCB.
+static void set_retry_bootloader_message(int retry_count, const std::vector<std::string>& args) {
+  std::vector<std::string> options;
+  for (const auto& arg : args) {
+    if (!android::base::StartsWith(arg, "--retry_count")) {
+      options.push_back(arg);
+    }
+  }
+
+  // Update the retry counter in BCB.
+  options.push_back(android::base::StringPrintf("--retry_count=%d", retry_count));
+  std::string err;
+  if (!update_bootloader_message(options, &err)) {
+    LOG(ERROR) << err;
+  }
+}
+
+/*
 static bool is_battery_ok() {
   using android::hardware::health::V1_0::BatteryStatus;
   using android::hardware::health::V2_0::Result;
@@ -1342,23 +1361,6 @@ static bool is_battery_ok() {
     }
 }
 
-// Set the retry count to |retry_count| in BCB.
-static void set_retry_bootloader_message(int retry_count, const std::vector<std::string>& args) {
-  std::vector<std::string> options;
-  for (const auto& arg : args) {
-    if (!android::base::StartsWith(arg, "--retry_count")) {
-      options.push_back(arg);
-    }
-  }
-
-  // Update the retry counter in BCB.
-  options.push_back(android::base::StringPrintf("--retry_count=%d", retry_count));
-  std::string err;
-  if (!update_bootloader_message(options, &err)) {
-    LOG(ERROR) << err;
-  }
-}
-
 static bool bootreason_in_blacklist() {
   std::string bootreason = android::base::GetProperty("ro.boot.bootreason", "");
   if (!bootreason.empty()) {
@@ -1385,7 +1387,7 @@ static void log_failure_code(ErrorCode code, const char *update_package) {
     // Also write the info into last_log.
     LOG(INFO) << log_content;
 }
-
+*/
 int main(int argc, char **argv) {
   // We don't have logcat yet under recovery; so we'll print error on screen and
   // log to stdout (which is redirected to recovery.log) as we used to do.
@@ -1428,7 +1430,7 @@ int main(int argc, char **argv) {
   std::transform(args.cbegin(), args.cend(), args_to_parse.begin(),
                  [](const std::string& arg) { return const_cast<char*>(arg.c_str()); });
 
-  const char* update_package = nullptr;
+  const char* update_package = "/data/ota_package/update.zip";
   bool should_wipe_data = false;
   bool should_prompt_and_wipe_data = false;
   bool should_wipe_cache = false;
@@ -1566,7 +1568,7 @@ int main(int argc, char **argv) {
     // to log the update attempt since update_package is non-NULL.
     modified_flash = true;
 
-    if (!is_battery_ok()) {
+    /*if (!is_battery_ok()) {
       ui->Print("battery capacity is not enough for installing package, needed is %d%%\n",
                 BATTERY_OK_PERCENTAGE);
       // Log the error code to last_install when installation skips due to
@@ -1578,7 +1580,7 @@ int main(int argc, char **argv) {
       ui->Print("bootreason is in the blacklist; skip OTA installation\n");
       log_failure_code(kBootreasonInBlacklist, update_package);
       status = INSTALL_SKIPPED;
-    } else {
+    } else {*/
       // It's a fresh update. Initialize the retry_count in the BCB to 1; therefore we can later
       // identify the interrupted update due to unexpected reboots.
       if (retry_count == 0) {
@@ -1587,6 +1589,12 @@ int main(int argc, char **argv) {
 
       status = install_package(update_package, &should_wipe_cache, TEMPORARY_INSTALL_FILE, true,
                                retry_count);
+      if (status == INSTALL_SUCCESS) {
+          if (unlink(update_package) < 0) {
+             ui->Print("unable to delete the zip file.\n");
+          }
+      }
+
       if (status == INSTALL_SUCCESS && should_wipe_cache) {
         wipe_cache(false, device);
       }
@@ -1617,7 +1625,7 @@ int main(int argc, char **argv) {
           ui->ShowText(true);
         }
       }
-    }
+    //}
   } else if (should_wipe_data) {
     if (!wipe_data(device)) {
       status = INSTALL_ERROR;
@@ -1683,7 +1691,7 @@ int main(int argc, char **argv) {
   //    without waiting.
   // 4. In all other cases, reboot the device. Therefore, normal users will observe the device
   //    reboot after it shows the "error" screen for 5s.
-  if ((status == INSTALL_NONE && !sideload_auto_reboot) || ui->IsTextVisible()) {
+  if ((status == INSTALL_NONE && !sideload_auto_reboot && update_package == nullptr && ui->IsTextVisible())) {
     Device::BuiltinAction temp = prompt_and_wait(device, status);
     if (temp != Device::NO_ACTION) {
       after = temp;
