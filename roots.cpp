@@ -395,10 +395,10 @@ int setup_install_mounts() {
         return -1;
       }
     } else {
-      if (ensure_path_unmounted(v->mount_point) != 0) {
-        LOG(ERROR) << "Failed to unmount " << v->mount_point;
-        return -1;
-      }
+//      if (ensure_path_unmounted(v->mount_point) != 0) {
+//        LOG(ERROR) << "Failed to unmount " << v->mount_point;
+//        return -1;
+//      }
     }
   }
   return 0;

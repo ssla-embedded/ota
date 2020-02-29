@@ -353,10 +353,10 @@ int gr_init() {
   auto backend = std::unique_ptr<MinuiBackend>{ std::make_unique<MinuiBackendAdf>() };
   gr_draw = backend->Init();
 
-  if (!gr_draw) {
-    backend = std::make_unique<MinuiBackendDrm>();
-    gr_draw = backend->Init();
-  }
+  // if (!gr_draw) {
+  //   backend = std::make_unique<MinuiBackendDrm>();
+  //   gr_draw = backend->Init();
+  // }
 
   if (!gr_draw) {
     backend = std::make_unique<MinuiBackendFbdev>();

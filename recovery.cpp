@@ -223,92 +223,6 @@ bool reboot(const std::string& command) {
     return android::base::SetProperty(ANDROID_RB_PROPERTY, cmd);
 }
 
-static void redirect_stdio(const char* filename) {
-    int pipefd[2];
-    if (pipe(pipefd) == -1) {
-        PLOG(ERROR) << "pipe failed";
-
-        // Fall back to traditional logging mode without timestamps.
-        // If these fail, there's not really anywhere to complain...
-        freopen(filename, "a", stdout); setbuf(stdout, NULL);
-        freopen(filename, "a", stderr); setbuf(stderr, NULL);
-
-        return;
-    }
-
-    pid_t pid = fork();
-    if (pid == -1) {
-        PLOG(ERROR) << "fork failed";
-
-        // Fall back to traditional logging mode without timestamps.
-        // If these fail, there's not really anywhere to complain...
-        freopen(filename, "a", stdout); setbuf(stdout, NULL);
-        freopen(filename, "a", stderr); setbuf(stderr, NULL);
-
-        return;
-    }
-
-    if (pid == 0) {
-        /// Close the unused write end.
-        close(pipefd[1]);
-
-        auto start = std::chrono::steady_clock::now();
-
-        // Child logger to actually write to the log file.
-        FILE* log_fp = fopen(filename, "ae");
-        if (log_fp == nullptr) {
-            PLOG(ERROR) << "fopen \"" << filename << "\" failed";
-            close(pipefd[0]);
-            _exit(EXIT_FAILURE);
-        }
-
-        FILE* pipe_fp = fdopen(pipefd[0], "r");
-        if (pipe_fp == nullptr) {
-            PLOG(ERROR) << "fdopen failed";
-            check_and_fclose(log_fp, filename);
-            close(pipefd[0]);
-            _exit(EXIT_FAILURE);
-        }
-
-        char* line = nullptr;
-        size_t len = 0;
-        while (getline(&line, &len, pipe_fp) != -1) {
-            auto now = std::chrono::steady_clock::now();
-            double duration = std::chrono::duration_cast<std::chrono::duration<double>>(
-                    now - start).count();
-            if (line[0] == '\n') {
-                fprintf(log_fp, "[%12.6lf]\n", duration);
-            } else {
-                fprintf(log_fp, "[%12.6lf] %s", duration, line);
-            }
-            fflush(log_fp);
-        }
-
-        PLOG(ERROR) << "getline failed";
-
-        free(line);
-        check_and_fclose(log_fp, filename);
-        close(pipefd[0]);
-        _exit(EXIT_FAILURE);
-    } else {
-        // Redirect stdout/stderr to the logger process.
-        // Close the unused read end.
-        close(pipefd[0]);
-
-        setbuf(stdout, nullptr);
-        setbuf(stderr, nullptr);
-
-        if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
-            PLOG(ERROR) << "dup2 stdout failed";
-        }
-        if (dup2(pipefd[1], STDERR_FILENO) == -1) {
-            PLOG(ERROR) << "dup2 stderr failed";
-        }
-
-        close(pipefd[1]);
-    }
-}
-
 // command line args come from, in decreasing precedence:
 //   - the actual command line
 //   - the bootloader control block (one per line, after "recovery")
@@ -1115,7 +1029,6 @@ static int apply_from_sdcard(Device* device, bool* wipe_cache) {
 
 // Returns REBOOT, SHUTDOWN, or REBOOT_BOOTLOADER. Returning NO_ACTION means to take the default,
 // which is to reboot or shutdown depending on if the --shutdown_after flag was passed to recovery.
-
 static Device::BuiltinAction prompt_and_wait(Device* device, int status) {
   for (;;) {
     finish_recovery();
@@ -1418,7 +1331,7 @@ int main(int argc, char **argv) {
 
   // redirect_stdio should be called only in non-sideload mode. Otherwise
   // we may have two logger instances with different timestamps.
-  redirect_stdio(TEMPORARY_LOG_FILE);
+  //redirect_stdio(TEMPORARY_LOG_FILE);
 
   printf("Starting recovery (pid %d) on %s", getpid(), ctime(&start));
 
@@ -1430,7 +1343,7 @@ int main(int argc, char **argv) {
   std::transform(args.cbegin(), args.cend(), args_to_parse.begin(),
                  [](const std::string& arg) { return const_cast<char*>(arg.c_str()); });
 
-  const char* update_package = "/data/ota_package/update.zip";
+  const char* update_package = "/data/ota_package/update.zip";;
   bool should_wipe_data = false;
   bool should_prompt_and_wipe_data = false;
   bool should_wipe_cache = false;
@@ -1691,6 +1604,7 @@ int main(int argc, char **argv) {
   //    without waiting.
   // 4. In all other cases, reboot the device. Therefore, normal users will observe the device
   //    reboot after it shows the "error" screen for 5s.
+
   if ((status == INSTALL_NONE && !sideload_auto_reboot && update_package == nullptr && ui->IsTextVisible())) {
     Device::BuiltinAction temp = prompt_and_wait(device, status);
     if (temp != Device::NO_ACTION) {
