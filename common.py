@@ -33,6 +33,7 @@ import threading
 import time
 import zipfile
 from hashlib import sha1, sha256
+from shutil import copyfile
 
 import blockimgdiff
 import sparse_img
@@ -850,7 +851,7 @@ def CheckSize(data, target, info_dict):
   else:
     pct = float(size) * 100.0 / limit
     msg = "%s size (%d) is %.2f%% of limit (%d)" % (target, size, pct, limit)
-    if pct >= 99.0:
+    if pct > 100.0:
       raise ExternalError(msg)
     elif pct >= 95.0:
       print("\n  WARNING: %s\n" % (msg,))
@@ -1389,6 +1390,22 @@ class File(object):
   def WriteToDir(self, d):
     with open(os.path.join(d, self.name), "wb") as fp:
       fp.write(self.data)
+
+  def WriteToDirBoot(self, d):
+    with open(os.path.join(d, self.name), "wb") as fp:
+      fp.write(self.data)
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    boot_img_path = os.path.join(OPTIONS.input_tmp, script_dir, "../../../../out/target/product/acura8mm/boot.img")
+    copyfile(boot_img_path, os.path.join(d, self.name))
+
+  def WriteToDirRecovery(self, d):
+    with open(os.path.join(d, self.name), "wb") as fp:
+      fp.write(self.data)
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    boot_img_path = os.path.join(OPTIONS.input_tmp, script_dir, "../../../../out/target/product/acura8mm/recovery.img")
+    copyfile(boot_img_path, os.path.join(d, self.name))
 
   def AddToZip(self, z, compression=None):
     ZipWriteStr(z, self.name, self.data, compress_type=compression)

@@ -1419,7 +1419,7 @@ define build-recoveryimage-target
     mkimage -A arm -O linux -T ramdisk -n "RAM Disk" -d $(recovery_ramdisk) \
     $(PRODUCT_OUT)/uramdisk-recovery.img; \
     cp -f $(PRODUCT_OUT)/uramdisk-recovery.img $(PRODUCT_OUT)/recovery_img/uramdisk.img; \
-    $(MKEXTUSERIMG) $(INTERNAL_USERIMAGES_SPARSE_EXT_FLAG) $(PRODUCT_OUT)/recovery_img $@ ext4 recovery $(BOARD_BOOTIMAGE_PARTITION_SIZE) -L recovery)
+    $(MKEXTUSERIMG) $(PRODUCT_OUT)/recovery_img $@ ext4 recovery $(BOARD_BOOTIMAGE_PARTITION_SIZE) -L recovery)
   $(if $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)), \
     $(hide) $(call assert-max-image-size,$(1),$(call get-hash-image-max-size,$(BOARD_BOOTIMAGE_PARTITION_SIZE))), \
     $(hide) $(call assert-max-image-size,$(1),$(call get-hash-image-max-size,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))))

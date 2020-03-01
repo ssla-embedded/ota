@@ -686,13 +686,14 @@ def AddImagesToTargetFiles(filename):
 
   banner("boot")
   # common.GetBootableImage() returns the image directly if present.
+  # "../../../../boot.img", "boot.img", OPTIONS.input_tmp, "BOOT")
   boot_image = common.GetBootableImage(
       "IMAGES/boot.img", "boot.img", OPTIONS.input_tmp, "BOOT")
   # boot.img may be unavailable in some targets (e.g. aosp_arm64).
   if boot_image:
     partitions['boot'] = os.path.join(OPTIONS.input_tmp, "IMAGES", "boot.img")
     if not os.path.exists(partitions['boot']):
-      boot_image.WriteToDir(OPTIONS.input_tmp)
+      boot_image.WriteToDirBoot(OPTIONS.input_tmp)
       if output_zip:
         boot_image.AddToZip(output_zip)
 
@@ -705,7 +706,7 @@ def AddImagesToTargetFiles(filename):
     partitions['recovery'] = os.path.join(
         OPTIONS.input_tmp, "IMAGES", "recovery.img")
     if not os.path.exists(partitions['recovery']):
-      recovery_image.WriteToDir(OPTIONS.input_tmp)
+      recovery_image.WriteToDirRecovery(OPTIONS.input_tmp)
       if output_zip:
         recovery_image.AddToZip(output_zip)
 
