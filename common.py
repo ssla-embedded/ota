@@ -545,9 +545,11 @@ def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir,
   otherwise look for it under 'unpack_dir'/IMAGES, otherwise construct it from
   the source files in 'unpack_dir'/'tree_subdir'."""
 
-  prebuilt_path = os.path.join(unpack_dir, "BOOTABLE_IMAGES", prebuilt_name)
+  script_dir = os.path.dirname(os.path.realpath(__file__))
+  out_dir = os.path.join(script_dir, "../../../../out/target/product/acura8mm")
+  prebuilt_path = os.path.join(out_dir, prebuilt_name)
   if os.path.exists(prebuilt_path):
-    print("using prebuilt %s from BOOTABLE_IMAGES..." % (prebuilt_name,))
+    print("using prebuilt %s from out dir..." % (prebuilt_name,))
     return File.FromLocalFile(name, prebuilt_path)
 
   prebuilt_path = os.path.join(unpack_dir, "IMAGES", prebuilt_name)
@@ -1390,22 +1392,6 @@ class File(object):
   def WriteToDir(self, d):
     with open(os.path.join(d, self.name), "wb") as fp:
       fp.write(self.data)
-
-  def WriteToDirBoot(self, d):
-    with open(os.path.join(d, self.name), "wb") as fp:
-      fp.write(self.data)
-
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    boot_img_path = os.path.join(OPTIONS.input_tmp, script_dir, "../../../../out/target/product/acura8mm/boot.img")
-    copyfile(boot_img_path, os.path.join(d, self.name))
-
-  def WriteToDirRecovery(self, d):
-    with open(os.path.join(d, self.name), "wb") as fp:
-      fp.write(self.data)
-
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    boot_img_path = os.path.join(OPTIONS.input_tmp, script_dir, "../../../../out/target/product/acura8mm/recovery.img")
-    copyfile(boot_img_path, os.path.join(d, self.name))
 
   def AddToZip(self, z, compression=None):
     ZipWriteStr(z, self.name, self.data, compress_type=compression)
